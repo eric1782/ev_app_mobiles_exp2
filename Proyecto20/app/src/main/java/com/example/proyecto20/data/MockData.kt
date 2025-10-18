@@ -120,7 +120,7 @@ object MockData {
 
     // --- FUNCIÓN PARA CREAR NUEVOS ALUMNOS (AHORA INCOMPATIBLE) ---
     // ESTA FUNCIÓN YA NO ES COMPATIBLE con tu modelo. La comentamos para que no de error
-    // y luego decidimos cómo manejar la creación de alumnos.
+    // y luego decidimos cómo manejar la creación de alumnos. y mas alumnos 
     /*
     fun crearAlumnoCompleto(
         nombre: String,
