@@ -108,6 +108,14 @@ fun EntrenadorMainScreen(
                 ) {
                     Text("Ejercicios") // Texto acortado
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
+                    // --- CORRECCIÓN EN LA NAVEGACIÓN ---
+                    // Ahora construimos la ruta con el ID del entrenador.
+                    val route = AppRoutes.CALENDARIO_ENTRENADOR_SCREEN.replace("{entrenadorId}", entrenadorId)
+                    navController.navigate(route)
+                }) {
+                    Text("Ver Calendario de Citas")
                 Button(
                     onClick = { navController.navigate(AppRoutes.CALENDARIO_ENTRENADOR_SCREEN) },
                 ) {

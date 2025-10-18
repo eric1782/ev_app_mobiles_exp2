@@ -1,5 +1,6 @@
 package com.example.proyecto20.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.proyecto20.model.EjercicioRutina
+import com.example.proyecto20.model.TipoCliente
 import com.example.proyecto20.ui.theme.Proyecto20Theme
 import java.text.DecimalFormat
 import java.util.Locale
@@ -27,19 +29,20 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrearAlumnoScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onSaveAlumno: (nombre: String, email: String, pass: String, peso: Double, estatura: Double, tipo: TipoCliente, rutina: Map<String, List<EjercicioRutina>>) -> Unit
 ) {
     var nombreState by remember { mutableStateOf("") }
     var emailState by remember { mutableStateOf("") }
     var passwordState by remember { mutableStateOf("") }
     var pesoState by remember { mutableStateOf("") }
     var estaturaState by remember { mutableStateOf("") }
+    var tipoClienteState by remember { mutableStateOf(TipoCliente.PRESENCIAL) }
 
     val rutinaEnConstruccion = remember { mutableStateMapOf<String, MutableList<EjercicioRutina>>() }
 
     var showAddDiaDialog by remember { mutableStateOf(false) }
     var diaParaAnadirEjercicio by remember { mutableStateOf<String?>(null) }
-    var recomposeTrigger by remember { mutableStateOf(false) }
 
     val pesoKg = pesoState.toDoubleOrNull() ?: 0.0
     val estaturaCm = estaturaState.toDoubleOrNull() ?: 0.0
@@ -48,25 +51,38 @@ fun CrearAlumnoScreen(
     val df = DecimalFormat("#.##")
 
     if (showAddDiaDialog) {
-        AddDiaDialog( // Importado de Dialogs.kt
+        // Asumo que este composable existe en un archivo Dialogs.kt
+        AddDiaDialog(
             onDismiss = { showAddDiaDialog = false },
             onSave = { nuevoDia: String ->
-                rutinaEnConstruccion.putIfAbsent(nuevoDia, mutableListOf())
+                rutinaEnConstruccion.putIfAbsent(nuevoDia.uppercase(Locale.ROOT), mutableListOf())
                 showAddDiaDialog = false
             }
         )
     }
 
     diaParaAnadirEjercicio?.let { diaActual ->
-        AddEjercicioDialog( // Importado de Dialogs.kt
+        // Asumo que este composable existe
+        AddEjercicioDialog(
             dia = diaActual,
             onDismiss = { diaParaAnadirEjercicio = null },
+            // --- INICIO DE LA CORRECCIÓN ---
             onSave = { idEjercicio, peso, series, reps ->
+                // 1. Obtenemos la lista actual de ejercicios (o una lista vacía si no existe).
+                val listaActual = rutinaEnConstruccion[diaActual] ?: emptyList()
+
+                // 2. Creamos el nuevo ejercicio que vamos a añadir.
                 val nuevoEjercicio = EjercicioRutina(idEjercicio, series, reps, peso)
-                rutinaEnConstruccion[diaActual]?.add(nuevoEjercicio)
-                recomposeTrigger = !recomposeTrigger
+
+                // 3. (LA MAGIA) Reemplazamos la lista en el mapa con una NUEVA lista.
+                //    El operador '+' crea una nueva lista con los elementos antiguos MÁS el nuevo.
+                //    Este reemplazo de la instancia es lo que Compose detecta para redibujar la UI.
+                rutinaEnConstruccion[diaActual] = (listaActual + nuevoEjercicio).toMutableList()
+
+                // 4. Cerramos el diálogo.
                 diaParaAnadirEjercicio = null
             }
+            // --- FIN DE LA CORRECCIÓN ---
         )
     }
 
@@ -78,15 +94,12 @@ fun CrearAlumnoScreen(
             )
         }
     ) { paddingValues ->
-        val diasDeRutina = remember(rutinaEnConstruccion.keys, recomposeTrigger) {
-            rutinaEnConstruccion.keys.toList()
-        }
+        val diasDeRutina = rutinaEnConstruccion.keys.sorted()
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- SECCIONES DE DATOS Y PERFIL (sin cambios) ---
             item {
                 Text("Datos del Alumno", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(value = nombreState, onValueChange = { nombreState = it }, label = { Text("Nombre Completo") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -95,6 +108,27 @@ fun CrearAlumnoScreen(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(value = passwordState, onValueChange = { passwordState = it }, label = { Text("Contraseña Temporal") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = PasswordVisualTransformation(), singleLine = true)
             }
+
+            item {
+                Text("Tipo de Cliente", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.clickable { tipoClienteState = TipoCliente.PRESENCIAL }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = tipoClienteState == TipoCliente.PRESENCIAL, onClick = null)
+                        Text("Presencial")
+                    }
+                    Row(
+                        Modifier.clickable { tipoClienteState = TipoCliente.ONLINE }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = tipoClienteState == TipoCliente.ONLINE, onClick = null)
+                        Text("Online")
+                    }
+                }
+            }
+
             item {
                 Text("Perfil Físico", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -107,7 +141,6 @@ fun CrearAlumnoScreen(
                 }
             }
 
-            // --- SECCIÓN DE RUTINA ---
             item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -120,23 +153,29 @@ fun CrearAlumnoScreen(
                 }
             }
 
-            // --- LISTA DE DÍAS ---
             items(diasDeRutina) { dia ->
-                DiaEntrenamientoCard( // Importado de ComponentesComunes.kt
+                // Asumo que tienes un Composable llamado DiaEntrenamientoCard
+                DiaEntrenamientoCard(
                     dia = dia,
                     ejercicios = rutinaEnConstruccion[dia] ?: emptyList(),
                     onAddClick = { diaParaAnadirEjercicio = dia },
-                    onEditClick = { /* TODO: Implementar edición en esta pantalla si se desea */ }
+                    onEditClick = { /* TODO */ }
                 )
             }
 
-            // --- BOTÓN FINAL ---
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        println("Guardando Alumno: Nombre=${nombreState}, Email=${emailState}")
-                        println("Rutina: $rutinaEnConstruccion")
+                        onSaveAlumno(
+                            nombreState,
+                            emailState,
+                            passwordState,
+                            pesoState.toDoubleOrNull() ?: 0.0,
+                            estaturaState.toDoubleOrNull() ?: 0.0,
+                            tipoClienteState,
+                            rutinaEnConstruccion.toMap()
+                        )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = nombreState.isNotBlank() && emailState.isNotBlank()
@@ -148,7 +187,7 @@ fun CrearAlumnoScreen(
     }
 }
 
-// --- FUNCIONES DE AYUDA (NO HAY COMPONENTES DE UI AQUÍ) ---
+// --- FUNCIONES DE AYUDA RESTAURADAS ---
 
 fun calcularIMC(pesoEnKg: Double, alturaEnCm: Double): Pair<Double, String> {
     if (alturaEnCm <= 0 || pesoEnKg <= 0) { return Pair(0.0, "Datos inválidos") }
@@ -178,7 +217,9 @@ fun obtenerColorIMC(categoria: String): Color {
 @Composable
 fun CrearAlumnoScreenPreview() {
     Proyecto20Theme {
-        CrearAlumnoScreen(onNavigateBack = {})
+        CrearAlumnoScreen(
+            onNavigateBack = {},
+            onSaveAlumno = { _, _, _, _, _, _, _ -> } // Actualizado a 7 parámetros
+        )
     }
 }
-

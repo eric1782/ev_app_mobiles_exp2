@@ -13,11 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.isEmpty
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.proyecto20.model.CitaMostrable
-import com.example.proyecto20.util.GestorDeCitas // Ahora esta importación funcionará
+import com.example.proyecto20.util.GestorDeCitas
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -25,13 +24,16 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarioEntrenadorScreen(
+    // --- CAMBIO 1: Añadimos el ID del entrenador como parámetro ---
+    entrenadorId: String,
     onNavigateBack: () -> Unit,
     onNavigateToRutina: (alumnoId: String) -> Unit
 ) {
     var fechaSeleccionada by remember { mutableStateOf(LocalDate.now()) }
-    // NOTA: El ID del entrenador está "hardcodeado". Lo ideal sería pasarlo como parámetro.
-    val citasDelDia = remember(fechaSeleccionada) {
-        GestorDeCitas.obtenerCitasParaDia("user001", fechaSeleccionada)
+
+    // --- CAMBIO 2: Usamos el ID del entrenador que recibimos ---
+    val citasDelDia = remember(fechaSeleccionada, entrenadorId) {
+        GestorDeCitas.obtenerCitasParaDia(entrenadorId, fechaSeleccionada)
     }
 
     var mostrarDatePicker by remember { mutableStateOf(false) }
@@ -60,7 +62,7 @@ fun CalendarioEntrenadorScreen(
                 onCalendarClick = { mostrarDatePicker = true }
             )
 
-            if (citasDelDia.isEmpty()) { // Esto funcionará
+            if (citasDelDia.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -83,7 +85,7 @@ fun CalendarioEntrenadorScreen(
                 }
             }
         }
-
+        //mostrarDatePicker es para visualizar el icono de calendario, donde puedes seleccionar una fecha del mes
         if (mostrarDatePicker) {
             val datePickerState = rememberDatePickerState(
                 initialSelectedDateMillis = fechaSeleccionada.atStartOfDay().toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
@@ -109,6 +111,9 @@ fun CalendarioEntrenadorScreen(
         }
     }
 }
+
+
+// DateNavigationBar y CitaCard no cambian, por lo que los incluyo tal cual.
 
 @Composable
 fun DateNavigationBar(
@@ -147,7 +152,6 @@ fun DateNavigationBar(
     }
 }
 
-// CitaCard ahora vive aquí, al final del archivo.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CitaCard(
@@ -185,3 +189,4 @@ fun CitaCard(
         }
     }
 }
+

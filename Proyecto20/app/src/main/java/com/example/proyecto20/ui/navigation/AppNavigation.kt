@@ -17,7 +17,7 @@ import com.example.proyecto20.ui.screens.*
 object AppRoutes {
     const val LOGIN_SCREEN = "login"
     const val HOME_SCREEN = "home/{userId}"
-    const val CALENDARIO_ENTRENADOR_SCREEN = "calendario_entrenador"
+    const val CALENDARIO_ENTRENADOR_SCREEN = "calendario_entrenador/{entrenadorId}"
     const val ALUMNO_DETAIL_SCREEN = "alumno_detail/{alumnoId}"
     const val ADD_EJERCICIO_SCREEN = "addEjercicio"
     const val LISTA_EJERCICIOS_SCREEN = "lista_ejercicios"
@@ -34,7 +34,6 @@ fun AppNavigation() {
 
         composable(AppRoutes.LOGIN_SCREEN) {
             var hasLoginError by remember { mutableStateOf(false) }
-
             LoginScreen(
                 onLoginClick = { email, password ->
                     hasLoginError = false
@@ -74,11 +73,8 @@ fun AppNavigation() {
                                 navController.navigate(AppRoutes.ADD_ALUMNO_SCREEN)
                             }
                         )
-                        // --- CORRECCIÓN APLICADA AQUÍ ---
                         RolUsuario.ALUMNO -> AlumnoMainScreen(
-                            // 1. Se pasa el ID del alumno
                             alumnoId = user.id,
-                            // 2. Se define la acción para navegar al detalle del ejercicio
                             onNavigateToEjercicioDetail = { ejercicioId ->
                                 val route = AppRoutes.EJERCICIO_DETAIL_SCREEN.replace("{ejercicioId}", ejercicioId)
                                 navController.navigate(route)
@@ -86,27 +82,7 @@ fun AppNavigation() {
                         )
                     }
                 }
-            } else {
-                // Si no hay userId, vuelve al login para evitar un estado inconsistente
-                navController.popBackStack(AppRoutes.LOGIN_SCREEN, inclusive = false)
             }
-        }
-
-        composable(AppRoutes.LISTA_EJERCICIOS_SCREEN) {
-            MisEjerciciosScreen(
-                navController = navController,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(AppRoutes.ADD_EJERCICIO_SCREEN) {
-            AddEjercicioScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onSave = { nombre, descripcion, musculo, url ->
-                    MockData.addEjercicioCompletoAlCatalogo(nombre, descripcion, musculo, url ?: "")
-                    navController.popBackStack()
-                }
-            )
         }
 
         composable(
@@ -123,29 +99,45 @@ fun AppNavigation() {
         }
 
         composable(
+            route = AppRoutes.CALENDARIO_ENTRENADOR_SCREEN,
+            arguments = listOf(navArgument("entrenadorId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val entrenadorId = backStackEntry.arguments?.getString("entrenadorId")
+            if (entrenadorId != null) {
+                CalendarioEntrenadorScreen(
+                    entrenadorId = entrenadorId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToRutina = { alumnoId ->
+                        val route = AppRoutes.ALUMNO_DETAIL_SCREEN.replace("{alumnoId}", alumnoId)
+                        navController.navigate(route)
+                    }
+                )
+            } else {
+                navController.popBackStack()
+            }
+        }
+
+        composable(AppRoutes.LISTA_EJERCICIOS_SCREEN) {
+            MisEjerciciosScreen(navController = navController, onNavigateBack = { navController.popBackStack() })
+        }
+        composable(AppRoutes.ADD_EJERCICIO_SCREEN) {
+            AddEjercicioScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onSave = { nombre, descripcion, musculo, url ->
+                    MockData.addEjercicioCompletoAlCatalogo(nombre, descripcion, musculo, url ?: "")
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(
             route = AppRoutes.EJERCICIO_DETAIL_SCREEN,
             arguments = listOf(navArgument("ejercicioId") { type = NavType.StringType })
         ) { backStackEntry ->
             val ejercicioId = backStackEntry.arguments?.getString("ejercicioId")
             if (ejercicioId != null) {
-                EjercicioDetailScreen(
-                    ejercicioId = ejercicioId,
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                EjercicioDetailScreen(ejercicioId = ejercicioId, onNavigateBack = { navController.popBackStack() })
             }
         }
-
-        composable(AppRoutes.CALENDARIO_ENTRENADOR_SCREEN) {
-            CalendarioEntrenadorScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToRutina = { alumnoId ->
-                    val route = AppRoutes.ALUMNO_DETAIL_SCREEN.replace("{alumnoId}", alumnoId)
-                    navController.navigate(route)
-                }
-            )
-        }
-
-
         composable(
             route = AppRoutes.MIS_ALUMNOS_SCREEN,
             arguments = listOf(navArgument("entrenadorId") { type = NavType.StringType })
@@ -154,14 +146,45 @@ fun AppNavigation() {
             if (entrenadorId != null) {
                 MisAlumnosScreen(
                     navController = navController,
-                    entrenadorId = entrenadorId
+                    entrenadorId = entrenadorId,
+                    onAddAlumnoClick = {
+                        navController.navigate(AppRoutes.ADD_ALUMNO_SCREEN)
+                    }
                 )
             }
         }
 
+        // --- BLOQUE CORREGIDO Y DEFINITIVO ---
         composable(AppRoutes.ADD_ALUMNO_SCREEN) {
-            // Placeholder para la pantalla de añadir alumno.
-            // Más adelante conectaremos CrearAlumnoScreen aquí.
+            // Buscamos el ID del entrenador de forma más robusta.
+            // Primero, intentamos obtener 'userId' (si venimos de EntrenadorMainScreen).
+            // Si es nulo, usamos el operador Elvis (?:) para intentar obtener 'entrenadorId' (si venimos de MisAlumnosScreen).
+            val arguments = navController.previousBackStackEntry?.arguments
+            val entrenadorId = arguments?.getString("userId") ?: arguments?.getString("entrenadorId")
+
+            if (entrenadorId != null) {
+
+                CrearAlumnoScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    // --- CAMBIO: La firma de la función ahora incluye el tipo de cliente ---
+                    onSaveAlumno = { nombre, email, pass, peso, estatura, tipo, rutina ->
+                        MockData.crearAlumnoCompleto(
+                            nombre = nombre,
+                            email = email,
+                            pass = pass,
+                            peso = peso,
+                            estatura = estatura,
+                            tipoCliente = tipo, // <-- Pasamos el tipo al MockData
+                            rutinaMap = rutina,
+                            idEntrenador = entrenadorId
+                        )
+                        navController.popBackStack()
+                    }
+                )
+            } else {
+                // Si, a pesar de todo, no encontramos el ID, volvemos para evitar un crash.
+                navController.popBackStack()
+            }
         }
     }
 }
