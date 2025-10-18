@@ -74,7 +74,7 @@ fun CalendarioEntrenadorScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(citasDelDia) { cita ->
-                        // Esta llamada ahora funcionará
+                        // Esta llamada ahora funcionará mucho mejor
                         CitaCard(
                             cita = cita,
                             onVerRutinaClick = { onNavigateToRutina(cita.idAlumno) }
