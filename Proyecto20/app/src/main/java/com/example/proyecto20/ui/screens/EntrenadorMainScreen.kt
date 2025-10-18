@@ -44,19 +44,20 @@ fun EntrenadorMainScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { navController.navigate(AppRoutes.MIS_ALUMNOS_SCREEN.replace("{entrenadorId}", entrenadorId)) }) {
+                Button(onClick = {
+                    val route = AppRoutes.MIS_ALUMNOS_SCREEN.replace("{entrenadorId}", entrenadorId)
+                    navController.navigate(route)
+                }) {
                     Text("Ver todos los alumnos")
                 }
             }
 
-            // Muestra los primeros alumnos a modo de resumen
             if (misAlumnos.isEmpty()) {
                 item {
                     Text("Aún no tienes alumnos asignados.")
                 }
             } else {
                 items(misAlumnos.take(3)) { alumno ->
-                    // Esta llamada ahora funcionará
                     AlumnoCard(
                         alumno = alumno,
                         onClick = { onAlumnoClick(alumno.id) }
@@ -79,7 +80,12 @@ fun EntrenadorMainScreen(
                     Text("Ver Catálogo de Ejercicios")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { navController.navigate(AppRoutes.CALENDARIO_ENTRENADOR_SCREEN) }) {
+                Button(onClick = {
+                    // --- CORRECCIÓN EN LA NAVEGACIÓN ---
+                    // Ahora construimos la ruta con el ID del entrenador.
+                    val route = AppRoutes.CALENDARIO_ENTRENADOR_SCREEN.replace("{entrenadorId}", entrenadorId)
+                    navController.navigate(route)
+                }) {
                     Text("Ver Calendario de Citas")
                 }
             }

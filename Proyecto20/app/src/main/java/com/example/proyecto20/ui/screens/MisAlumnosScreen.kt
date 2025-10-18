@@ -19,7 +19,9 @@ import com.example.proyecto20.ui.navigation.AppRoutes
 @Composable
 fun MisAlumnosScreen(
     navController: NavController,
-    entrenadorId: String
+    entrenadorId: String,
+    // --- CAMBIO 1: Añadimos la función como parámetro ---
+    onAddAlumnoClick: () -> Unit
 ) {
     val misAlumnos = MockData.todosLosUsuarios.filter { it.idEntrenadorAsignado == entrenadorId }
 
@@ -35,7 +37,10 @@ fun MisAlumnosScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(AppRoutes.ADD_ALUMNO_SCREEN) }) {
+            FloatingActionButton(
+                // --- CAMBIO 2: El onClick ahora llama a la función recibida ---
+                onClick = onAddAlumnoClick
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Añadir Alumno")
             }
         }
@@ -48,7 +53,6 @@ fun MisAlumnosScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(misAlumnos) { alumno ->
-                // Esta llamada ahora funcionará porque AlumnoCard existe en ComponentesComunes.kt
                 AlumnoCard(
                     alumno = alumno,
                     onClick = {
