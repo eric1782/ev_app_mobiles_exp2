@@ -1,3 +1,4 @@
+// Ruta: app/src/main/java/com/example/proyecto20/MainActivity.kt
 package com.example.proyecto20
 
 import android.os.Bundle
@@ -10,7 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.proyecto20.ui.navigation.AppNavigation // Importante: Llama al sistema de navegación
+import com.example.proyecto20.ui.navigation.AppNavigation // Importamos nuestra navegación
 import com.example.proyecto20.ui.theme.Proyecto20Theme
 
 class MainActivity : ComponentActivity() {
@@ -19,11 +20,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Proyecto20Theme {
+                // La Surface es el contenedor principal de nuestra app.
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // El punto de entrada de la app ahora es el sistema de navegación
+                    // --- ¡CORRECCIÓN APLICADA! ---
+                    // La única responsabilidad de MainActivity es llamar a AppNavigation.
+                    // AppNavigation ahora es 100% autónomo y maneja su propia lógica.
                     AppNavigation()
                 }
             }
@@ -31,11 +35,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// La vista previa muestra la navegación, que es el punto de entrada
 @Preview(showBackground = true)
 @Composable
 fun AppPreview() {
     Proyecto20Theme {
+        // En la preview, podemos mostrar directamente la navegación.
+        // La preview no tendrá un estado real, así que podría mostrar la pantalla de carga o de login.
         AppNavigation()
     }
 }

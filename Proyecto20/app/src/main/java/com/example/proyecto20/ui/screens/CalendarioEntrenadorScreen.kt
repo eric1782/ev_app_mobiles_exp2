@@ -5,18 +5,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.proyecto20.model.CitaMostrable
-import com.example.proyecto20.util.GestorDeCitas
+import com.example.proyecto20.model.BloqueHorario
+import com.example.proyecto20.ui.viewmodels.CalendarioViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -24,47 +24,50 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarioEntrenadorScreen(
-    // --- CAMBIO 1: Añadimos el ID del entrenador como parámetro ---
-    entrenadorId: String,
+    viewModel: CalendarioViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToRutina: (alumnoId: String) -> Unit
+    onNavigateToRutina: (String) -> Unit
 ) {
-    var fechaSeleccionada by remember { mutableStateOf(LocalDate.now()) }
+    val selectedDate by viewModel.selectedDate.collectAsState()
+    val todasLasCitas by viewModel.citas.collectAsState()
 
-    // --- CAMBIO 2: Usamos el ID del entrenador que recibimos ---
-    val citasDelDia = remember(fechaSeleccionada, entrenadorId) {
-        GestorDeCitas.obtenerCitasParaDia(entrenadorId, fechaSeleccionada)
+    // Filtramos la lista completa de citas para mostrar solo las del día seleccionado.
+    val citasDelDia = todasLasCitas.filter { bloque ->
+        try {
+            // Asumimos que `horaInicio` es un String en formato ISO, como "2024-10-28T09:00".
+            val fechaDelBloque = LocalDate.parse(bloque.horaInicio.substring(0, 10))
+            fechaDelBloque == selectedDate
+        } catch (e: Exception) {
+            // Si el formato de la fecha es incorrecto, se ignora este bloque.
+            false
+        }
     }
-
-    var mostrarDatePicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Calendario Diario") },
+                title = { Text("Calendario de Citas") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
         }
-    ) { paddingValues ->
+    ) { padding ->
         Column(
             modifier = Modifier
+                .padding(padding)
                 .fillMaxSize()
-                .padding(paddingValues)
         ) {
-            DateNavigationBar(
-                currentDate = fechaSeleccionada,
-                onPreviousDay = { fechaSeleccionada = fechaSeleccionada.minusDays(1) },
-                onNextDay = { fechaSeleccionada = fechaSeleccionada.plusDays(1) },
-                onCalendarClick = { mostrarDatePicker = true }
+            DateSelector(
+                currentDate = selectedDate,
+                onDateChange = { newDate -> viewModel.onDateSelected(newDate) }
             )
-
+            HorizontalDivider()
             if (citasDelDia.isEmpty()) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("No hay citas programadas para este día.")
@@ -75,118 +78,76 @@ fun CalendarioEntrenadorScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(citasDelDia) { cita ->
-                        // Esta llamada ahora funcionará mucho mejor
+                    items(citasDelDia, key = { it.id }) { cita ->
                         CitaCard(
                             cita = cita,
-                            onVerRutinaClick = { onNavigateToRutina(cita.idAlumno) }
+                            onClick = {
+                                cita.idAlumno?.let { id -> onNavigateToRutina(id) }
+                            }
                         )
                     }
                 }
             }
         }
-        //mostrarDatePicker es para visualizar el icono de calendario, donde puedes seleccionar una fecha del mes
-        if (mostrarDatePicker) {
-            val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = fechaSeleccionada.atStartOfDay().toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
-            )
-            DatePickerDialog(
-                onDismissRequest = { mostrarDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            fechaSeleccionada = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(millis), java.time.ZoneOffset.UTC)
-                        }
-                        mostrarDatePicker = false
-                    }) {
-                        Text("Aceptar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { mostrarDatePicker = false }) { Text("Cancelar") }
-                }
-            ) {
-                DatePicker(state = datePickerState)
-            }
-        }
     }
 }
 
-
-// DateNavigationBar y CitaCard no cambian, por lo que los incluyo tal cual.
-
 @Composable
-fun DateNavigationBar(
-    currentDate: LocalDate,
-    onPreviousDay: () -> Unit,
-    onNextDay: () -> Unit,
-    onCalendarClick: () -> Unit
-) {
+fun DateSelector(currentDate: LocalDate, onDateChange: (LocalDate) -> Unit) {
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", Locale("es", "ES"))
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp),
+            .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceAround
     ) {
-        IconButton(onClick = onPreviousDay) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Día anterior")
+        IconButton(onClick = { onDateChange(currentDate.minusDays(1)) }) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Día anterior")
         }
-
         Text(
-            text = currentDate.format(formatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+            text = currentDate.format(formatter).replaceFirstChar { it.uppercase() },
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
-
-        Row {
-            IconButton(onClick = onCalendarClick) {
-                Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar fecha")
-            }
-            IconButton(onClick = onNextDay) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Día siguiente")
-            }
+        IconButton(onClick = { onDateChange(currentDate.plusDays(1)) }) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Día siguiente")
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CitaCard(
-    cita: CitaMostrable,
-    onVerRutinaClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun CitaCard(cita: BloqueHorario, onClick: () -> Unit) {
+    val horaInicioFormatted = try { cita.horaInicio.substring(11, 16) } catch (_: Exception) { "" }
+    val horaFinFormatted = try { cita.horaFin.substring(11, 16) } catch (_: Exception) { "" }
+
     Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { if (cita.idAlumno != null) onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (cita.disponible) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.secondaryContainer
+        )
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = cita.nombreAlumno,
+                    text = if (cita.disponible) "Horario Disponible" else (cita.idAlumno ?: "Cita Ocupada"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Hora: ${cita.horaInicio} - ${cita.horaFin}",
+                    text = "$horaInicioFormatted - $horaFinFormatted",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
-            Button(onClick = onVerRutinaClick) {
-                Text("Ver Rutina")
+            if (!cita.disponible && cita.idAlumno != null) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Ver rutina")
             }
         }
     }
 }
-

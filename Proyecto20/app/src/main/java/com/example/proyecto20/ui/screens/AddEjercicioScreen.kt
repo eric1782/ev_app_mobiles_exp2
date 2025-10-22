@@ -5,13 +5,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Save // <-- ¡IMPORTACIÓN AÑADIDA!
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,21 +38,17 @@ fun AddEjercicioScreen(
             )
         },
         floatingActionButton = {
-            // --- ¡CORRECCIÓN PRINCIPAL AQUÍ! ---
             ExtendedFloatingActionButton(
                 text = { Text("GUARDAR EJERCICIO") },
                 icon = { Icon(Icons.Filled.Save, contentDescription = "Guardar") },
-                // 1. Se modifica el `onClick`: solo se ejecuta si el formulario es válido.
                 onClick = {
                     if (isFormValid) {
                         onSave(nombre, descripcion, musculo, urlVideo.ifBlank { null })
                     }
                 },
-                // 2. Se elimina el parámetro `enabled`. En su lugar, cambiamos el color
-                //    para dar una pista visual de que el botón está deshabilitado.
-                //    Material 3 se encarga del resto (evita el "ripple effect" si onClick está vacío).
-                containerColor = if (isFormValid) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (isFormValid) MaterialTheme.colorScheme.onPrimaryContainer else Color.Gray
+                // El color del FAB se ajusta automáticamente según si está habilitado o no
+                // al cambiar la condición del onClick, no es necesario cambiarlo manualmente.
+                // Esta es la forma más simple y recomendada.
             )
         },
         floatingActionButtonPosition = FabPosition.Center
@@ -67,14 +62,13 @@ fun AddEjercicioScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Rellena los detalles del nuevo ejercicio para el catálogo.", style = MaterialTheme.typography.bodyMedium)
-            OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre del Ejercicio*") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = nombre.isBlank())
-            OutlinedTextField(value = musculo, onValueChange = { musculo = it }, label = { Text("Músculo Principal*") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = musculo.isBlank())
+            OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre del Ejercicio*") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = nombre.isBlank() && nombre.isNotEmpty())
+            OutlinedTextField(value = musculo, onValueChange = { musculo = it }, label = { Text("Músculo Principal*") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = musculo.isBlank() && musculo.isNotEmpty())
             OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción / Cómo realizarlo*") }, modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp), isError = descripcion.isBlank())
+                .height(150.dp), isError = descripcion.isBlank() && descripcion.isNotEmpty())
             OutlinedTextField(value = urlVideo, onValueChange = { urlVideo = it }, label = { Text("URL del video (Opcional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             Text("* Campos obligatorios", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
-

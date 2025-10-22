@@ -1,3 +1,5 @@
+// Ruta: app/src/main/java/com/example/proyecto20/ui/screens/LoginScreen.kt
+
 package com.example.proyecto20.ui.screens
 
 import androidx.compose.foundation.layout.*
@@ -11,60 +13,94 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.example.proyecto20.ui.navigation.AppRoutes
+import com.example.proyecto20.ui.viewmodels.AuthState
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun LoginScreen(
+    navController: NavController,
+    authState: AuthState,
     onLoginClick: (String, String) -> Unit,
-    hasError: Boolean // Recibe el estado de error
+    onLoginSuccess: () -> Unit,
+    onDismissError: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val isLoading = authState is AuthState.Loading
 
-    Column(
+    // --- ¡LA CLAVE ESTÁ AQUÍ! ---
+    // Este `LaunchedEffect` se ejecuta cada vez que el `authState` cambia.
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Authenticated) {
+            onLoginSuccess()
+        }
+    }
+
+    // Composable para mostrar el diálogo de error
+    if (authState is AuthState.Error) {
+        AlertDialog(
+            onDismissRequest = onDismissError,
+            title = { Text("Error de Autenticación") },
+            text = { Text(authState.message) },
+            confirmButton = {
+                Button(onClick = onDismissError) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
-        Text("Iniciar Sesión", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            isError = hasError // Marca el campo si hay error
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Contraseña") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = hasError // Marca el campo si hay error
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (hasError) {
-            Text(
-                "Email o contraseña incorrectos.",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        Button(
-            onClick = { onLoginClick(email, password) },
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("ENTRAR")
+            Text("Iniciar Sesión", style = MaterialTheme.typography.headlineLarge)
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Correo Electrónico") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Contraseña") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Button(
+                onClick = { onLoginClick(email, password) },
+                enabled = !isLoading, // Desactivar el botón mientras carga
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Ingresar")
+                }
+            }
+
+            TextButton(onClick = { navController.navigate(AppRoutes.REGISTRO_ENTRENADOR_SCREEN) }) {
+                Text("¿No tienes cuenta? Regístrate como entrenador")
+            }
         }
     }
 }

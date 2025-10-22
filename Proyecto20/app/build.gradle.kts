@@ -1,6 +1,10 @@
+// build.gradle.kts (Module :app)
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services") // <-- Plugin de Google Services
+    id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -33,7 +37,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
-        // 1. Esto está bien, habilita la desugarización.
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -43,36 +46,47 @@ android {
     buildFeatures {
         compose = true
     }
+    composeOptions {
+        // Esta sección puede ser eliminada o comentada,
+        // ya que la versión del compilador se alinea automáticamente.
+        // kotlinCompilerExtensionVersion = "1.5.13"
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/LICENSE-notice.md"
         }
     }
 }
 
 dependencies {
-    // Dependencias existentes (usando el catálogo 'libs')
-    implementation(libs.androidx.core.ktx) // Se corrige el duplicado
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    // Tus dependencias están perfectas y no necesitan cambios.
+    coreLibraryDesugaring(libs.android.desugar.jdk.libs)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
+    val composeBom = platform("androidx.compose:compose-bom:2024.05.00")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation("androidx.compose.material:material-icons-extended:1.6.7")
     implementation(libs.androidx.material3)
+    implementation("androidx.compose.material3:material3-window-size-class:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended:1.6.7")
     implementation(libs.androidx.navigation.compose)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
 
-    // Dependencias de testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
-    // --- 2. AÑADE LA DEPENDENCIA DE DESUGARIZACIÓN AQUÍ DE ESTA FORMA ---
-    // Se usa un string de texto porque no está en el catálogo 'libs'. Esto es correcto.
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
+

@@ -1,110 +1,90 @@
+// Ruta: app/src/main/java/com/example/proyecto20/ui/screens/AlumnoDetailScreen_EntrenadorView.kt
+
 package com.example.proyecto20.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.proyecto20.data.MockData
-import com.example.proyecto20.model.EjercicioRutina
-import com.example.proyecto20.ui.theme.Proyecto20Theme
+import androidx.navigation.NavController // <-- IMPORTACIÓN NECESARIA
+import com.example.proyecto20.ui.navigation.AppRoutes // <-- IMPORTACIÓN NECESARIA
+import com.example.proyecto20.ui.viewmodels.AlumnoDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlumnoDetailScreen_EntrenadorView(
     alumnoId: String,
+    viewModel: AlumnoDetailViewModel,
+    navController: NavController, // <-- PARÁMETRO AÑADIDO Y NECESARIO
     onNavigateBack: () -> Unit
 ) {
-    val alumno = MockData.todosLosUsuarios.find { it.id == alumnoId }
-
-    if (alumno == null) {
-        // ... (código para alumno no encontrado)
-        return
+    // Le decimos al ViewModel que cargue los datos cuando la pantalla se muestra por primera vez
+    LaunchedEffect(key1 = alumnoId) {
+        viewModel.cargarDatosAlumno(alumnoId)
     }
 
-    // Usamos una variable local en lugar de 'by remember' para evitar el smart cast impossible.
-    val rutina = remember { MockData.todasLasRutinas.find { it.idAlumno == alumnoId } }
-
-    var ejercicioAEditar by remember { mutableStateOf<Pair<String, EjercicioRutina>?>(null) }
-    var diaParaAnadirEjercicio by remember { mutableStateOf<String?>(null) }
-    var showAddDiaDialog by remember { mutableStateOf(false) }
+    val alumno by viewModel.alumno.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(alumno.nombre) },
+                title = { Text(alumno?.nombre ?: "Detalle del Alumno") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDiaDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Añadir día de entrenamiento")
-            }
         }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally // Centrado mientras carga
         ) {
-            item {
-                Text("Email: ${alumno.email}", style = MaterialTheme.typography.bodyLarge)
-                Text("Tipo de Cliente: ${alumno.tipoCliente ?: "No especificado"}", style = MaterialTheme.typography.bodyLarge)
-            }
-
-            item {
-                // Ahora llama a la versión oficial de ComponentesComunes.kt
-                SeccionDiasEntrenamiento(alumno = alumno)
-            }
-
-            if (rutina != null) {
-                item {
-                    Text("Rutina Asignada", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                }
-
-                // Usamos una copia local de rutina para el smart cast.
-                val rutinaValida = rutina
-                items(rutinaValida.ejerciciosPorDia.keys.toList()) { dia ->
-                    DiaEntrenamientoCard(
-                        dia = dia,
-                        ejercicios = rutinaValida.ejerciciosPorDia[dia] ?: emptyList(),
-                        onEditClick = { ejercicio ->
-                            ejercicioAEditar = Pair(dia, ejercicio)
-                        },
-                        onAddClick = {
-                            diaParaAnadirEjercicio = dia
-                        }
-                    )
-                }
+            if (isLoading) {
+                CircularProgressIndicator()
+            } else if (alumno == null) {
+                Text("No se pudieron cargar los datos del alumno.")
             } else {
-                item {
-                    Text("Este alumno todavía no tiene una rutina asignada.")
+                // Una vez cargado, usamos una Columna alineada al inicio
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("Nombre: ${alumno!!.nombre}", style = MaterialTheme.typography.titleLarge)
+                    Text("Email: ${alumno!!.email}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Peso: ${alumno!!.peso ?: "N/A"} kg", style = MaterialTheme.typography.bodyLarge)
+                    Text("Estatura: ${alumno!!.estatura ?: "N/A"} m", style = MaterialTheme.typography.bodyLarge)
+                    Text("Tipo: ${alumno!!.tipo}", style = MaterialTheme.typography.bodyLarge)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // --- ¡EL BOTÓN CLAVE QUE FALTABA! ---
+                    Button(
+                        onClick = {
+                            // Usamos el NavController para navegar a la pantalla de planificación
+                            navController.navigate(
+                                AppRoutes.PLANIFICACION_RUTINA_SCREEN.replace("{alumnoId}", alumnoId)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Gestionar Rutina")
+                    }
                 }
             }
         }
-    }
-
-    // Aquí iría la lógica para mostrar diálogos...
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AlumnoDetailScreen_EntrenadorViewPreview() {
-    Proyecto20Theme {
-        AlumnoDetailScreen_EntrenadorView(alumnoId = "user002", onNavigateBack = {})
     }
 }

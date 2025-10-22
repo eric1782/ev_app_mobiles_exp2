@@ -1,3 +1,5 @@
+// Ruta: app/src/main/java/com/example/proyecto20/ui/screens/MisEjerciciosScreen.kt
+
 package com.example.proyecto20.ui.screens
 
 import androidx.compose.foundation.clickable
@@ -9,22 +11,25 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.proyecto20.data.MockData
 import com.example.proyecto20.model.Ejercicio
 import com.example.proyecto20.ui.navigation.AppRoutes
+import com.example.proyecto20.ui.viewmodels.EjerciciosViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MisEjerciciosScreen(
     navController: NavController,
-    onNavigateBack: () -> Unit // Parámetro añadido para volver atrás
+    onNavigateBack: () -> Unit,
+    ejerciciosViewModel: EjerciciosViewModel
 ) {
-    val todosLosEjercicios = MockData.todosLosEjercicios
+    // Recolectamos el StateFlow del ViewModel correctamente
+    val ejercicios by ejerciciosViewModel.ejercicios.collectAsState()
 
     Scaffold(
         topBar = {
@@ -32,36 +37,29 @@ fun MisEjerciciosScreen(
                 title = { Text("Catálogo de Ejercicios") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
                 }
             )
         },
-        // --- AÑADIMOS EL BOTÓN FLOTANTE ---
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    // Navega a la pantalla para añadir un nuevo ejercicio
-                    navController.navigate(AppRoutes.ADD_EJERCICIO_SCREEN)
-                }
-            ) {
+            FloatingActionButton(onClick = { navController.navigate(AppRoutes.ADD_EJERCICIO_SCREEN) }) {
                 Icon(Icons.Default.Add, contentDescription = "Añadir Ejercicio")
             }
         }
-    ) { paddingValues ->
+    ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp)
         ) {
-            items(todosLosEjercicios) { ejercicio ->
-                EjercicioCard(
+            items(ejercicios) { ejercicio ->
+                EjercicioItem(
                     ejercicio = ejercicio,
                     onClick = {
-                        val route = AppRoutes.EJERCICIO_DETAIL_SCREEN.replace("{ejercicioId}", ejercicio.id)
-                        navController.navigate(route)
+                        // Aseguramos que el id no sea nulo antes de navegar
+                        navController.navigate(AppRoutes.EJERCICIO_DETAIL_SCREEN.replace("{ejercicioId}", ejercicio.id))
                     }
                 )
             }
@@ -70,23 +68,16 @@ fun MisEjerciciosScreen(
 }
 
 @Composable
-fun EjercicioCard(ejercicio: Ejercicio, onClick: () -> Unit) {
+fun EjercicioItem(ejercicio: Ejercicio, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = ejercicio.nombre,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Músculo principal: ${ejercicio.musculoPrincipal}",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Text(ejercicio.nombre, fontWeight = FontWeight.Bold)
+            Text(ejercicio.musculoPrincipal, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
