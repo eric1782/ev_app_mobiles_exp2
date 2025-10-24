@@ -1,6 +1,7 @@
 package com.example.proyecto20.data
 
 import com.example.proyecto20.model.*
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.SetOptions
@@ -10,10 +11,8 @@ import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
-import kotlin.random.Random
 
 object FirebaseRepository {
     val db = Firebase.firestore
@@ -31,7 +30,6 @@ object FirebaseRepository {
         return result.user
     }
 
-    // Esta función `register` es para el registro inicial del entrenador.
     suspend fun register(email: String, pass: String, nombre: String, rol: RolUsuario, onResult: (Boolean, String?) -> Unit) {
         try {
             val authResult = auth.createUserWithEmailAndPassword(email, pass).await()
@@ -52,73 +50,86 @@ object FirebaseRepository {
         auth.signOut()
     }
 
+    suspend fun changePassword(oldPass: String, newPass: String) {
+        val user = auth.currentUser ?: throw Exception("No hay un usuario logueado.")
+        val credential = EmailAuthProvider.getCredential(user.email!!, oldPass)
+        user.reauthenticate(credential).await()
+        user.updatePassword(newPass).await()
+    }
+
+    // --- FUNCIONES DE USUARIO ---
+    suspend fun getCurrentUser(): Usuario? {
+        val firebaseUser = auth.currentUser ?: return null
+        return getUsuarioById(firebaseUser.uid)
+    }
+
+    // --- ¡¡INICIO DE LA FUNCIÓN AÑADIDA!! ---
+    /**
+     * Obtiene un Flow de un usuario para observar sus cambios en tiempo real.
+     */
+    fun getUsuarioFlow(userId: String): Flow<Usuario?> {
+        return db.collection("usuarios").document(userId)
+            .snapshots() // Esta llamada es correcta aquí porque el Repository tiene los imports necesarios
+            .map { snapshot ->
+                // Convierte el documento de Firestore en un objeto Usuario
+                snapshot.toObject(Usuario::class.java)?.copy(id = snapshot.id)
+            }
+    }
+    // --- ¡¡FIN DE LA FUNCIÓN AÑADIDA!! ---
+
     suspend fun crearUsuarioEnAuthYFirestore(
         email: String,
         nombre: String,
         rol: RolUsuario,
         entrenadorId: String,
         password: String,
-        // --- ¡CAMPOS AÑADIDOS CON TIPO CORRECTO! ---
         peso: Double?,
         estatura: Double?,
         tipo: TipoAlumno
     ): Usuario? {
-        // 1. Crear el usuario en Firebase Authentication
         val authResult = auth.createUserWithEmailAndPassword(email, password).await()
         val firebaseUser = authResult.user ?: return null
-
-        // 2. Crear el objeto Usuario con TODOS los datos
         val nuevoUsuario = Usuario(
             id = firebaseUser.uid,
             nombre = nombre,
             email = email,
             rol = rol,
             idEntrenador = entrenadorId,
-            // --- ¡CAMPOS AÑADIDOS! ---
             peso = peso,
             estatura = estatura,
             tipo = tipo
         )
-
-        // 3. Guardar el objeto Usuario en Firestore
         db.collection("usuarios").document(firebaseUser.uid).set(nuevoUsuario).await()
-
-        // 4. Devolver el usuario recién creado
         return nuevoUsuario
     }
 
-    // --- FUNCIONES DE USUARIO ---
     suspend fun getUsuarioById(userId: String): Usuario? {
         return try {
             val document = db.collection("usuarios").document(userId).get().await()
-            if (!document.exists()) return null
-
-            Usuario(
-                id = document.id,
-                nombre = document.getString("nombre") ?: "",
-                email = document.getString("email") ?: "",
-                idEntrenador = document.getString("idEntrenador"),
-                rol = try { RolUsuario.valueOf(document.getString("rol") ?: "ALUMNO") } catch (e: Exception) { RolUsuario.ALUMNO },
-                rutina = emptyList() // Se carga por separado
-            )
+            document.toObject(Usuario::class.java)?.copy(id = document.id)
         } catch (e: Exception) {
             null
         }
     }
 
     // --- FUNCIONES DE ALUMNOS ---
-    fun getAlumnosByEntrenadorFlow(entrenadorId: String): Flow<List<Usuario>> {
+    suspend fun getAlumnosByEntrenadorSuspend(entrenadorId: String): List<Usuario> {
         if (entrenadorId.isBlank()) {
-            return flowOf(emptyList())
+            return emptyList()
         }
-        return db.collection("usuarios")
-            .whereEqualTo("idEntrenador", entrenadorId)
-            .snapshots()
-            .map { snapshot ->
-                snapshot.documents.mapNotNull { document ->
-                    getUsuarioById(document.id) // Reutilizamos la función segura
-                }
+        return try {
+            val snapshot = db.collection("usuarios")
+                .whereEqualTo("rol", RolUsuario.ALUMNO.name)
+                .whereEqualTo("idEntrenador", entrenadorId)
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { document ->
+                document.toObject(Usuario::class.java)?.copy(id = document.id)
             }
+        } catch (e: Exception) {
+            println("Error al obtener alumnos: ${e.message}")
+            emptyList()
+        }
     }
 
     // --- FUNCIONES DE EJERCICIOS ---
@@ -127,20 +138,26 @@ object FirebaseRepository {
             .snapshots()
             .map { snapshot ->
                 snapshot.documents.mapNotNull { document ->
-                    Ejercicio(
-                        id = document.id,
-                        nombre = document.getString("nombre") ?: "",
-                        descripcion = document.getString("descripcion") ?: "",
-                        musculoPrincipal = document.getString("musculoPrincipal") ?: "",
-                        urlVideo = document.getString("urlVideo") ?: ""
-                    )
+                    document.toObject(Ejercicio::class.java)?.copy(id = document.id)
                 }
             }
     }
 
-    suspend fun addEjercicio(nombre: String, descripcion: String, musculo: String, urlVideo: String) {
-        val ejercicio = Ejercicio(nombre = nombre, descripcion = descripcion, musculoPrincipal = musculo, urlVideo = urlVideo)
+    suspend fun getEjercicioById(ejercicioId: String): Ejercicio? {
+        return try {
+            val document = db.collection("ejercicios").document(ejercicioId).get().await()
+            document.toObject(Ejercicio::class.java)?.copy(id = document.id)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun addEjercicio(ejercicio: Ejercicio) {
         db.collection("ejercicios").add(ejercicio).await()
+    }
+
+    suspend fun updateEjercicio(ejercicioId: String, ejercicio: Ejercicio) {
+        db.collection("ejercicios").document(ejercicioId).set(ejercicio).await()
     }
 
     // --- FUNCIONES DE RUTINA ---
@@ -148,28 +165,7 @@ object FirebaseRepository {
         return db.collection("usuarios").document(alumnoId)
             .snapshots()
             .map { documentSnapshot ->
-                if (documentSnapshot.exists()) {
-                    val rutinaData = documentSnapshot.get("rutina") as? List<Map<String, Any>> ?: return@map emptyList()
-
-                    rutinaData.mapNotNull { diaMap ->
-                        val diaNombre = diaMap["dia"] as? String ?: return@mapNotNull null
-                        val ejerciciosData = diaMap["ejercicios"] as? List<Map<String, Any>> ?: emptyList()
-
-                        val ejercicios = ejerciciosData.mapNotNull { ejercicioMap ->
-                            EjercicioRutina(
-                                ejercicioId = ejercicioMap["ejercicioId"] as? String ?: "",
-                                nombre = ejercicioMap["nombre"] as? String ?: "",
-                                series = (ejercicioMap["series"] as? Long)?.toInt() ?: 3,
-                                repeticiones = ejercicioMap["repeticiones"] as? String ?: "10-12",
-                                rir = (ejercicioMap["rir"] as? Long)?.toInt(),
-                                peso = ejercicioMap["peso"] as? Double
-                            )
-                        }
-                        DiaEntrenamiento(dia = diaNombre, ejercicios = ejercicios)
-                    }
-                } else {
-                    emptyList()
-                }
+                documentSnapshot.toObject(Usuario::class.java)?.rutina ?: emptyList()
             }
     }
 
@@ -180,26 +176,42 @@ object FirebaseRepository {
                 .set(data, SetOptions.merge())
                 .await()
         } catch (e: Exception) {
-            // Manejar error
+            println("Error al guardar rutina: ${e.message}")
         }
     }
 
-    // --- FUNCIONES DE CALENDARIO ---
-    fun getHorariosEntrenador(entrenadorId: String): Flow<List<BloqueHorario>> {
-        return db.collection("horarios")
-            .whereEqualTo("entrenadorId", entrenadorId)
-            .snapshots()
-            .map { snapshot ->
-                snapshot.documents.mapNotNull { document ->
-                    BloqueHorario(
-                        id = document.id,
-                        entrenadorId = document.getString("entrenadorId") ?: "",
-                        idAlumno = document.getString("idAlumno"),
-                        horaInicio = document.getString("horaInicio") ?: "",
-                        horaFin = document.getString("horaFin") ?: "",
-                        disponible = document.getBoolean("disponible") ?: true
-                    )
-                }
+    // --- ¡¡INICIO DE LA LÓGICA FINAL PARA HORARIOS!! ---
+
+    /**
+     * Guarda o actualiza la hora de entrenamiento de un alumno presencial para un día específico.
+     * La hora se guarda como un simple texto en el perfil del alumno.
+     */
+    suspend fun asignarHoraPresencial(
+        alumnoId: String,
+        diaSemana: String,
+        hora: String // Recibimos el texto de la hora directamente
+    ) {
+        val alumnoRef = db.collection("usuarios").document(alumnoId)
+
+        // Creamos el objeto que se guardará
+        val nuevoHorario = HorarioPresencial(dia = diaSemana, hora = hora)
+
+        // Obtenemos los horarios que ya tenía el alumno
+        val documento = alumnoRef.get().await()
+        val horariosPrevios = documento.toObject(Usuario::class.java)?.horariosPresenciales ?: emptyList()
+
+        val horariosActualizados = horariosPrevios.toMutableList().apply {
+            // Quitamos la asignación previa para ese día para poder reemplazarla.
+            removeAll { it.dia == diaSemana }
+            // Solo añadimos el nuevo horario si no está en blanco
+            if (hora.isNotBlank()) {
+                add(nuevoHorario)
             }
+        }
+
+        // Actualizamos la lista de horarios del alumno en Firestore. ¡Y listo!
+        alumnoRef.update("horariosPresenciales", horariosActualizados).await()
     }
+
+    // --- ¡¡FIN DE LA LÓGICA FINAL PARA HORARIOS!! ---
 }

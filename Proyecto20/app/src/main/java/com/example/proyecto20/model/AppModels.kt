@@ -3,6 +3,7 @@
 package com.example.proyecto20.model
 
 import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.ServerTimestamp
 
 // --- ENUMS PARA CONTROLAR ESTADOS Y TIPOS ---
 
@@ -23,11 +24,11 @@ data class Usuario(
     val nombre: String = "",
     val email: String = "",
     val rol: RolUsuario = RolUsuario.ALUMNO,
-    val idEntrenador: String? = null, // <- COMA AÑADIDA
-    val peso: Double? = null,         // <- COMA AÑADIDA
-    val estatura: Double? = null,     // <- COMA AÑADIDA
-    val tipo: TipoAlumno = TipoAlumno.PRESENCIAL, // <- COMA AÑADIDA
-    val rutina: List<DiaEntrenamiento> = emptyList(), // <- COMA AÑADIDA
+    val idEntrenador: String? = null,
+    val peso: Double? = null,
+    val estatura: Double? = null,
+    val tipo: TipoAlumno = TipoAlumno.PRESENCIAL,
+    val rutina: List<DiaEntrenamiento> = emptyList(),
     val horariosPresenciales: List<HorarioPresencial> = emptyList()
 )
 
@@ -39,43 +40,50 @@ data class Ejercicio(
     val urlVideo: String = ""
 )
 
-data class BloqueHorario(
-    @get:Exclude var id: String = "",
-    val entrenadorId: String = "",
-    val idAlumno: String? = null,
-    val horaInicio: String = "",
-    val horaFin: String = "",
-    val disponible: Boolean = true
-)
 
 // --- MODELOS DE DATOS PARA ESTRUCTURAS COMPLEJAS (VAN DENTRO DE OTROS MODELOS) ---
 
 data class DiaEntrenamiento(
-    val dia: String, // "LUNES", "MARTES", etc.
+    val dia: String = "", // "LUNES", "MARTES", etc.
     val ejercicios: List<EjercicioRutina> = emptyList()
 )
 
 data class EjercicioRutina(
-    val ejercicioId: String, // Referencia al ejercicio en el catálogo
-    val nombre: String,      // Para mostrarlo fácilmente en la UI
-    val series: Int = 3,
-    val repeticiones: String = "10-12",
-    val rir: Int? = 2, // Repeticiones en Reserva
+    val ejercicioId: String = "", // Referencia al ejercicio en el catálogo
+    val nombre: String = "",      // Para mostrarlo fácilmente en la UI
+    val series: Int = 0,
+    val repeticiones: String = "",
+    val rir: Int? = null,
     val peso: Double? = null
 )
 
 data class HorarioPresencial(
-    val dia: String,
-    val bloqueHorarioId: String // ID del bloque reservado en la colección 'horarios'
+    val dia: String = "",
+    val hora: String = ""
 )
 
 
 // --- MODELOS DE DATOS ESPECIALES PARA LA UI (NO NECESARIAMENTE EN FIRESTORE) ---
 
 data class Cita(
-    val id: String,
-    val nombreAlumno: String,
-    val horaInicio: String,
-    val horaFin: String,
-    val idAlumno: String
+    val id: String = "",
+    val nombreAlumno: String = "",
+    val horaInicio: String = "",
+    val horaFin: String = "",
+    val idAlumno: String = ""
 )
+
+// --- ¡¡INICIO DE LA CORRECCIÓN CRÍTICA!! ---
+data class RegistroProgreso(
+    // Se cambia 'fecha' por 'timestamp' para que coincida con el resto de la app
+    @ServerTimestamp
+    val timestamp: com.google.firebase.Timestamp? = null,
+    val ejercicioId: String = "",
+    val ejercicioNombre: String = "",
+    val series: Int = 0,
+    val repeticiones: String = "",
+    val peso: Double? = null,
+    val rir: Int? = null,
+    val comentario: String? = null
+)
+
