@@ -1,54 +1,59 @@
 package com.example.proyecto20.ui.viewmodels
 
-import androidx.lifecycle.*
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.example.proyecto20.data.FirebaseRepository
 import com.example.proyecto20.model.Usuario
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
-// --- VERSIÓN DEFINITIVA Y ROBUSTA DEL VIEWMODEL ---
-
+// El nombre correcto que estás usando en tu proyecto
 class AlumnosViewModel(private val entrenadorId: String) : ViewModel() {
 
-    // 1. Creamos un StateFlow privado que se suscribe al Flow del repositorio.
-    //    Esto es robusto y reacciona a cambios en tiempo real.
-    private val _alumnos: StateFlow<List<Usuario>> =
-        FirebaseRepository.getAlumnosByEntrenadorFlow(entrenadorId) // <- Llama a la nueva función Flow
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = emptyList()
-            )
+    private val _textoBusqueda = MutableStateFlow("")
+    val textoBusqueda = _textoBusqueda.asStateFlow()
 
-    // 2. El StateFlow para la búsqueda de texto no cambia.
-    val textoBusqueda = MutableStateFlow("")
+    private val _alumnos = MutableStateFlow<List<Usuario>>(emptyList())
 
-    // 3. El StateFlow público que la UI observará.
-    //    Combina la lista de alumnos con el texto de búsqueda.
-    @OptIn(FlowPreview::class)
-    val alumnosFiltrados: StateFlow<List<Usuario>> = textoBusqueda
-        .debounce(300)
-        .combine(_alumnos) { texto, alumnos ->
-            if (texto.isBlank()) {
-                alumnos
-            } else {
-                alumnos.filter { it.nombre.contains(texto, ignoreCase = true) }
+    // ¡NUEVO! Estado para controlar la pantalla de carga
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading = _isLoading.asStateFlow()
+
+    // Cambiamos el nombre de 'alumnosFiltrados' a simplemente 'alumnos'
+    // para que coincida con la UI que te proporcioné.
+    val alumnos = combine(_alumnos, _textoBusqueda) { alumnos, busqueda ->
+        if (busqueda.isBlank()) {
+            alumnos
+        } else {
+            alumnos.filter { it.nombre.contains(busqueda, ignoreCase = true) }
+        }
+    }
+
+    init {
+        cargarAlumnos()
+    }
+
+    private fun cargarAlumnos() {
+        viewModelScope.launch {
+            _isLoading.value = true // Inicia la carga
+            try {
+                // Usamos la nueva función suspendida
+                _alumnos.value = FirebaseRepository.getAlumnosByEntrenadorSuspend(entrenadorId)
+            } finally {
+                _isLoading.value = false // Finaliza la carga, incluso si hay error
             }
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    }
 
-    // Ya no necesitamos init{} ni cargarAlumnos(). El Flow lo hace todo automático.
-
-    fun onTextoBusquedaChange(nuevoTexto: String) {
-        textoBusqueda.value = nuevoTexto
+    fun onTextoBusquedaChange(texto: String) {
+        _textoBusqueda.value = texto
     }
 }
 
-// La Factory no cambia, sigue siendo correcta.
+// Cambiamos el nombre aquí también por consistencia
 class AlumnosViewModelFactory(private val entrenadorId: String) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AlumnosViewModel::class.java)) {
