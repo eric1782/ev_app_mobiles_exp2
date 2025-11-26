@@ -12,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController // <-- IMPORTACIÓN NECESARIA
 import com.example.proyecto20.ui.navigation.AppRoutes // <-- IMPORTACIÓN NECESARIA
@@ -33,55 +34,76 @@ fun AlumnoDetailScreen_EntrenadorView(
     val alumno by viewModel.alumno.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(alumno?.nombre ?: "Detalle del Alumno") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+    DarkMatterBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(alumno?.nombre ?: "Detalle del Alumno") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
                     }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally // Centrado mientras carga
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator()
-            } else if (alumno == null) {
-                Text("No se pudieron cargar los datos del alumno.")
-            } else {
-                // Una vez cargado, usamos una Columna alineada al inicio
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text("Nombre: ${alumno!!.nombre}", style = MaterialTheme.typography.titleLarge)
-                    Text("Email: ${alumno!!.email}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Peso: ${alumno!!.peso ?: "N/A"} kg", style = MaterialTheme.typography.bodyLarge)
-                    Text("Estatura: ${alumno!!.estatura ?: "N/A"} m", style = MaterialTheme.typography.bodyLarge)
-                    Text("Tipo: ${alumno!!.tipo}", style = MaterialTheme.typography.bodyLarge)
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // --- ¡EL BOTÓN CLAVE QUE FALTABA! ---
-                    Button(
-                        onClick = {
-                            // Usamos el NavController para navegar a la pantalla de planificación
-                            navController.navigate(
-                                AppRoutes.PLANIFICACION_RUTINA_SCREEN.replace("{alumnoId}", alumnoId)
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else if (alumno == null) {
+                    Text("No se pudieron cargar los datos del alumno.")
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text("Gestionar Rutina")
+                        Text("Nombre: ${alumno!!.nombre}", style = MaterialTheme.typography.titleLarge)
+                        Text("Email: ${alumno!!.email}", style = MaterialTheme.typography.bodyLarge)
+                        Text("Peso: ${alumno!!.peso ?: "N/A"} kg", style = MaterialTheme.typography.bodyLarge)
+                        Text("Estatura: ${alumno!!.estatura ?: "N/A"} m", style = MaterialTheme.typography.bodyLarge)
+                        Text("Tipo: ${alumno!!.tipo}", style = MaterialTheme.typography.bodyLarge)
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Botón para ver la rutina con calorías
+                        Button(
+                            onClick = {
+                                navController.navigate(
+                                    AppRoutes.VISUALIZACION_RUTINA_SCREEN.replace("{alumnoId}", alumnoId)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Ver Rutina")
+                        }
+                        
+                        // Botón para gestionar/editar la rutina
+                        Button(
+                            onClick = {
+                                navController.navigate(
+                                    AppRoutes.PLANIFICACION_RUTINA_SCREEN.replace("{alumnoId}", alumnoId)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFFEB3B),
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text("Gestionar Rutina")
+                        }
                     }
                 }
             }

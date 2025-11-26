@@ -14,7 +14,13 @@ class CrearAlumnoViewModel(private val entrenadorId: String) : ViewModel() {
     fun crearAlumno(
         email: String,
         nombre: String,
+        apellido: String,
         pass: String,
+        telefono: String?,
+        whatsapp: String?,
+        peso: String?,
+        estatura: String?,
+        tipo: TipoAlumno,
         onResult: (Boolean, String?) -> Unit
     ) {
         viewModelScope.launch {
@@ -24,13 +30,15 @@ class CrearAlumnoViewModel(private val entrenadorId: String) : ViewModel() {
                 val nuevoUsuario = FirebaseRepository.crearUsuarioEnAuthYFirestore(
                     email = email,
                     nombre = nombre,
+                    apellido = apellido,
                     rol = RolUsuario.ALUMNO,
                     entrenadorId = entrenadorId,
                     password = pass,
-                    peso = null, // Se podrán editar más tarde
-                    estatura = null, // Se podrán editar más tarde
-                    // --- ¡CORRECCIÓN APLICADA AQUÍ USANDO LA INFORMACIÓN DE TU PROYECTO! ---
-                    tipo = TipoAlumno.PRESENCIAL // Por defecto
+                    telefono = telefono?.takeIf { it.isNotBlank() },
+                    whatsapp = whatsapp?.takeIf { it.isNotBlank() },
+                    peso = peso?.takeIf { it.isNotBlank() }?.toDoubleOrNull(),
+                    estatura = estatura?.takeIf { it.isNotBlank() }?.toDoubleOrNull(),
+                    tipo = tipo
                 )
 
                 if (nuevoUsuario != null) {

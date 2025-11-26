@@ -1,5 +1,7 @@
 package com.example.proyecto20.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,15 +10,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.example.proyecto20.R
 import com.example.proyecto20.model.RegistroProgreso
+import com.example.proyecto20.model.Usuario
+import com.example.proyecto20.ui.navigation.AppRoutes
 import com.example.proyecto20.ui.viewmodels.EstadisticasViewModel
 import com.example.proyecto20.ui.viewmodels.EstadisticasViewModelFactory
 import java.text.SimpleDateFormat
@@ -33,7 +46,9 @@ import java.util.*
 fun EstadisticasAlumnoScreen(
     alumnoId: String,
     onNavigateToDetail: (String) -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    navController: NavController,
+    user: Usuario
 ) {
     val viewModel: EstadisticasViewModel = viewModel(factory = EstadisticasViewModelFactory(alumnoId))
     val historialAgrupado by viewModel.historialAgrupado.collectAsState()
@@ -43,43 +58,116 @@ fun EstadisticasAlumnoScreen(
         viewModel.cargarHistorialCompletoAgrupado()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Mi Progreso") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+    val backgroundPainter = painterResource(id = R.drawable.login_background)
+    val overlayBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xB0000000),
+                Color(0xD0000000)
             )
-        }
-    ) { padding ->
-        Box(modifier = Modifier
+        )
+    }
+
+    Box(
+        modifier = Modifier
             .fillMaxSize()
-            .padding(padding)) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (historialAgrupado.isEmpty()) {
-                Text(
-                    text = "Aún no hay registros de progreso. ¡Pídele a tu entrenador que guarde tu primer entrenamiento!",
-                    modifier = Modifier
+            .background(Color(0xFF1A1A1A))
+    ) {
+        // Imagen de fondo
+        Image(
+            painter = backgroundPainter,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        
+        // Overlay oscuro para mejorar la legibilidad del texto
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(overlayBrush)
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    ),
+                    title = { Text("Mi Progreso") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
+                    }
+                )
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = Color(0xFF1E1E1E),
+                    contentColor = Color.White
+                ) {
+                    ModernNavigationBarItem(
+                        icon = Icons.Default.Home,
+                        label = "Hoy",
+                        selected = false,
+                        onClick = {
+                            navController.navigate(AppRoutes.HOME_SCREEN) {
+                                launchSingleTop = true
+                                popUpTo(AppRoutes.HOME_SCREEN) { inclusive = true }
+                            }
+                        }
+                    )
+                    ModernNavigationBarItem(
+                        icon = Icons.Default.DateRange,
+                        label = "Rutina",
+                        selected = false,
+                        onClick = {
+                            navController.navigate(
+                                AppRoutes.VISUALIZACION_RUTINA_SCREEN.replace("{alumnoId}", user.id)
+                            )
+                        }
+                    )
+                    ModernNavigationBarItem(
+                        icon = Icons.Default.BarChart,
+                        label = "Progreso",
+                        selected = true,
+                        onClick = { /* Ya estamos aquí */ }
+                    )
+                }
+            }
+        ) { padding ->
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else if (historialAgrupado.isEmpty()) {
+                    Text(
+                        text = "Aún no hay registros de progreso. ¡Pídele a tu entrenador que guarde tu primer entrenamiento!",
+                        modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 32.dp)
                         .align(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(historialAgrupado.keys.toList().sorted()) { ejercicioNombre ->
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(historialAgrupado.keys.toList().sorted()) { ejercicioNombre ->
                         EjercicioEstadisticaItem(
                             nombre = ejercicioNombre,
                             onClick = { onNavigateToDetail(ejercicioNombre) }
                         )
+                    }
                     }
                 }
             }
@@ -130,57 +218,60 @@ fun EstadisticasDetalleScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(ejercicioNombre) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+    DarkMatterBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(ejercicioNombre) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    )
                 )
-            )
-        }
-    ) { padding ->
-        val historialDelEjercicio = historialAgrupado[ejercicioNombre] ?: emptyList()
+            }
+        ) { padding ->
+            val historialDelEjercicio = historialAgrupado[ejercicioNombre] ?: emptyList()
 
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)) {
-            if (isLoading && historialDelEjercicio.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Text("Evolución del Peso (kg)", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Card(
-                            modifier = Modifier
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)) {
+                if (isLoading && historialDelEjercicio.isEmpty()) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            Text("Evolución del Peso (kg)", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Card(
+                                modifier = Modifier
                                 .fillMaxWidth()
                                 .height(200.dp)
                                 .padding(vertical = 16.dp)
                         ) {
-                            // Gráfico temporalmente deshabilitado hasta resolver imports de Vico
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Text("Gráfico temporalmente deshabilitado", style = MaterialTheme.typography.bodyLarge)
+                                // Gráfico temporalmente deshabilitado hasta resolver imports de Vico
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Text("Gráfico temporalmente deshabilitado", style = MaterialTheme.typography.bodyLarge)
+                                }
                             }
                         }
-                    }
 
-                    item {
-                        Text("Historial Completo", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    }
+                        item {
+                            Text("Historial Completo", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        }
 
-                    items(historialDelEjercicio.sortedByDescending { it.timestamp }) { registro ->
-                        HistorialItem(registro = registro)
+                        items(historialDelEjercicio.sortedByDescending { it.timestamp }) { registro ->
+                            HistorialItem(registro = registro)
+                        }
                     }
                 }
             }

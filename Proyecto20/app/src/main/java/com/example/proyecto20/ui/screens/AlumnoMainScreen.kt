@@ -1,26 +1,38 @@
 package com.example.proyecto20.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-// IMPORT CORREGIDO/AÑADIDO:
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.proyecto20.R
+import com.example.proyecto20.data.FirebaseRepository
 import com.example.proyecto20.model.EjercicioRutina
 import com.example.proyecto20.model.Usuario
 import com.example.proyecto20.ui.navigation.AppRoutes
@@ -48,73 +60,175 @@ fun AlumnoMainScreen(
     // Nos aseguramos de que el día seleccionado en el ViewModel sea siempre el de hoy
     viewModel.seleccionarDia(diaDeHoy)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("¡Hola, ${user.nombre}!") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                actions = { TextButton(onClick = onLogout) { Text("SALIR", color = Color.White) } }
-            )
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Hoy") },
-                    label = { Text("Hoy") },
-                    selected = true, // La pantalla principal siempre es "Hoy"
-                    onClick = { /* No hace nada, ya estamos aquí */ }
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = "Rutina") },
-                    label = { Text("Rutina") },
-                    selected = false,
-                    onClick = {
-                        navController.navigate(
-                            AppRoutes.VISUALIZACION_RUTINA_SCREEN.replace("{alumnoId}", user.id)
-                        )
-                    }
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.BarChart, contentDescription = "Progreso") },
-                    label = { Text("Progreso") },
-                    selected = false,
-                    onClick = {
-                        navController.navigate(
-                            AppRoutes.ESTADISTICAS_ALUMNO_SCREEN.replace("{alumnoId}", user.id)
-                        )
-                    }
-                )
-            }
+    var menuExpanded by remember { mutableStateOf(false) } // Estado para controlar el menú desplegable
+    var mostrarAyuda by remember { mutableStateOf(false) }
+    var mostrarContacto by remember { mutableStateOf(false) }
+    var entrenadorInfo by remember { mutableStateOf<Usuario?>(null) }
+
+    LaunchedEffect(user.idEntrenador) {
+        user.idEntrenador?.let { entrenadorId ->
+            val entrenador = FirebaseRepository.getUsuarioById(entrenadorId)
+            entrenadorInfo = entrenador
         }
-    ) { padding ->
-        Column(
+    }
+
+    val backgroundPainter = painterResource(id = R.drawable.mis_alumnos_background)
+    val overlayBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xB0000000),
+                Color(0xD0000000)
+            )
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1A1A1A))
+    ) {
+        // Imagen de fondo
+        Image(
+            painter = backgroundPainter,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        
+        // Overlay oscuro para mejorar la legibilidad del texto
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-        ) {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    Text(
-                        "Entrenamiento de Hoy:",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (!horaDelDia.isNullOrBlank()) {
-                        Text(
-                            "Tu cita de hoy es a las: $horaDelDia",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                .background(overlayBrush)
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    ),
+                    title = { Text("¡Hola, ${user.nombre}!") },
+                    navigationIcon = {
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menú")
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Cerrar sesión") },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onLogout()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Ayuda") },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        mostrarAyuda = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Contacto (WhatsApp entrenador)") },
+                                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                                    enabled = entrenadorInfo != null,
+                                    onClick = {
+                                        menuExpanded = false
+                                        mostrarContacto = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Cambiar contraseña") },
+                                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        navController.navigate(AppRoutes.CAMBIAR_PASSWORD_SCREEN)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Mis datos") },
+                                    leadingIcon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        navController.navigate(AppRoutes.MIS_DATOS_SCREEN.replace("{userId}", user.id)) {
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                )
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = Color(0xFF1E1E1E),
+                    contentColor = Color.White
+                ) {
+                    ModernNavigationBarItem(
+                        icon = Icons.Default.Home,
+                        label = "Hoy",
+                        selected = true,
+                        onClick = { /* No hace nada, ya estamos aquí */ }
+                    )
+                    ModernNavigationBarItem(
+                        icon = Icons.Default.DateRange,
+                        label = "Rutina",
+                        selected = false,
+                        onClick = {
+                            navController.navigate(
+                                AppRoutes.VISUALIZACION_RUTINA_SCREEN.replace("{alumnoId}", user.id)
+                            )
+                        }
+                    )
+                    ModernNavigationBarItem(
+                        icon = Icons.Default.BarChart,
+                        label = "Progreso",
+                        selected = false,
+                        onClick = {
+                            navController.navigate(
+                                AppRoutes.ESTADISTICAS_ALUMNO_SCREEN.replace("{alumnoId}", user.id)
+                            )
+                        }
+                    )
                 }
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        Text(
+                            "Entrenamiento de Hoy:",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        if (!horaDelDia.isNullOrBlank()) {
+                            Text(
+                                "Tu cita de hoy es a las: $horaDelDia",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = DarkMatterPalette.Highlight
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
 
                 if (entrenamientoDeHoy == null || entrenamientoDeHoy.ejercicios.isEmpty()) {
                     item {
@@ -123,8 +237,54 @@ fun AlumnoMainScreen(
                                 .fillParentMaxWidth()
                                 .padding(vertical = 50.dp), contentAlignment = Alignment.Center
                         ) {
-                            Text("Hoy tienes descanso. ¡A recuperar!")
+                            Text(
+                                "Hoy tienes descanso. ¡A recuperar!",
+                                color = Color.White
+                            )
                         }
+
+    if (mostrarAyuda) {
+        AlertDialog(
+            onDismissRequest = { mostrarAyuda = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarAyuda = false }) {
+                    Text("Entendido")
+                }
+            },
+            title = { Text("Ayuda") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("¿Necesitas ayuda?")
+                    Text("Correo: soporte@proyecto20.com")
+                    Text("Teléfono: +34 600 123 456")
+                }
+            }
+        )
+    }
+
+    if (mostrarContacto) {
+        val entrenador = entrenadorInfo
+        AlertDialog(
+            onDismissRequest = { mostrarContacto = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarContacto = false }) {
+                    Text("Cerrar")
+                }
+            },
+            title = { Text("Contacto de tu entrenador") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (entrenador != null) {
+                        Text("Entrenador: ${entrenador.nombre} ${entrenador.apellido}")
+                        Text("WhatsApp: ${entrenador.whatsapp ?: "No registrado"}")
+                        Text("Correo: ${entrenador.email}")
+                    } else {
+                        Text("No se encontró la información de contacto del entrenador.")
+                    }
+                }
+            }
+        )
+    }
                     }
                 } else {
                     items(entrenamientoDeHoy.ejercicios) { ejercicio ->
@@ -142,20 +302,53 @@ fun AlumnoMainScreen(
                         )
                     }
                 }
-            }
-
-            // El botón "Cambiar Contraseña" se mantiene, el de "Ver Rutina" ahora está en la barra inferior.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Button(onClick = { navController.navigate(AppRoutes.CAMBIAR_PASSWORD_SCREEN) }) {
-                    Text("Cambiar Contraseña")
                 }
+                // --- 3. EL ROW CON EL BOTÓN HA SIDO ELIMINADO DE AQUÍ ---
             }
         }
+    }
+
+    if (mostrarAyuda) {
+        AlertDialog(
+            onDismissRequest = { mostrarAyuda = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarAyuda = false }) {
+                    Text("Entendido")
+                }
+            },
+            title = { Text("Ayuda") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("¿Necesitas ayuda?")
+                    Text("Correo: soporte@proyecto20.com")
+                    Text("Teléfono: +34 600 123 456")
+                }
+            }
+        )
+    }
+
+    if (mostrarContacto) {
+        val entrenador = entrenadorInfo
+        AlertDialog(
+            onDismissRequest = { mostrarContacto = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarContacto = false }) {
+                    Text("Cerrar")
+                }
+            },
+            title = { Text("Contacto de tu entrenador") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (entrenador != null) {
+                        Text("Entrenador: ${entrenador.nombre} ${entrenador.apellido}")
+                        Text("WhatsApp: ${entrenador.whatsapp ?: "No registrado"}")
+                        Text("Correo: ${entrenador.email}")
+                    } else {
+                        Text("No se encontró la información de contacto del entrenador.")
+                    }
+                }
+            }
+        )
     }
 }
 
@@ -190,7 +383,6 @@ fun EjercicioVistaItem(
                 )
             }
             Icon(
-                // AHORA ESTA LÍNEA ES VÁLIDA GRACIAS AL IMPORT
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = "Ver detalle",
                 tint = MaterialTheme.colorScheme.primary

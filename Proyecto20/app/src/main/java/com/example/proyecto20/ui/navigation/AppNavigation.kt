@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -35,6 +36,7 @@ object AppRoutes {
     const val ADD_EJERCICIO_SCREEN = "add_ejercicio"
     const val EDIT_EJERCICIO_SCREEN = "edit_ejercicio/{ejercicioId}"
     const val CALENDARIO_SCREEN = "calendario_screen"
+    const val MIS_DATOS_SCREEN = "mis_datos/{userId}"
     const val PLANIFICACION_RUTINA_SCREEN = "planificacion_rutina/{alumnoId}"
 
     // --- Rutas del Alumno ---
@@ -96,7 +98,22 @@ fun AppNavHost(authViewModel: AuthViewModel, user: Usuario) {
                 onNavigateToPlanificacion = { alumnoId ->
                     navController.navigate(AppRoutes.PLANIFICACION_RUTINA_SCREEN.replace("{alumnoId}", alumnoId))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = {
+                    navController.navigate(AppRoutes.HOME_SCREEN) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToCalendario = {
+                    navController.navigate(AppRoutes.CALENDARIO_SCREEN) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToEjercicios = {
+                    navController.navigate(AppRoutes.LISTA_EJERCICIOS_SCREEN) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
         composable(AppRoutes.ADD_ALUMNO_SCREEN) {
@@ -123,6 +140,19 @@ fun AppNavHost(authViewModel: AuthViewModel, user: Usuario) {
                 navController = navController,
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+        composable(
+            route = AppRoutes.MIS_DATOS_SCREEN,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId")
+            if (userId != null) {
+                val viewModel: MisDatosViewModel = viewModel(factory = MisDatosViewModel.Factory(userId))
+                MisDatosScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
         }
         composable(
             route = AppRoutes.EJERCICIO_DETAIL_SCREEN,
@@ -177,6 +207,13 @@ fun AppNavHost(authViewModel: AuthViewModel, user: Usuario) {
             val alumnoId = backStackEntry.arguments?.getString("alumnoId")
             if (alumnoId != null) {
                 val vm: PlanificacionViewModel = viewModel(factory = PlanificacionViewModel.Factory(alumnoId))
+                // Obtener el usuario del alumno para calcular calorías con su peso
+                val alumnoViewModel = viewModel<AlumnoDetailViewModel>(factory = AlumnoDetailViewModel.Factory())
+                LaunchedEffect(alumnoId) {
+                    alumnoViewModel.cargarDatosAlumno(alumnoId)
+                }
+                val alumno by alumnoViewModel.alumno.collectAsState()
+                
                 VisualizacionRutinaScreen(
                     viewModel = vm,
                     onNavigateBack = { navController.popBackStack() },
@@ -192,7 +229,10 @@ fun AppNavHost(authViewModel: AuthViewModel, user: Usuario) {
                             .replace("{peso}", ejercicio.peso?.toString() ?: "")
                             .replace("{rir}", ejercicio.rir?.toString() ?: "")
                         navController.navigate(route)
-                    }
+                    },
+                    navController = navController,
+                    // Usar el usuario del alumno si está disponible, sino el usuario autenticado
+                    user = alumno ?: user
                 )
             }
         }
@@ -215,7 +255,9 @@ fun AppNavHost(authViewModel: AuthViewModel, user: Usuario) {
                                 .replace("{ejercicioNombre}", encodedNombre)
                         )
                     },
-                    onNavigateBack = { navController.popBackStack() } // Se cambia a popBackStack para poder volver
+                    onNavigateBack = { navController.popBackStack() }, // Se cambia a popBackStack para poder volver
+                    navController = navController,
+                    user = user
                 )
             }
         }
@@ -245,15 +287,40 @@ fun AppNavHost(authViewModel: AuthViewModel, user: Usuario) {
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToPlanificacion = { alumnoId ->
                     navController.navigate(AppRoutes.PLANIFICACION_RUTINA_SCREEN.replace("{alumnoId}", alumnoId))
+                },
+                onNavigateToHome = {
+                    navController.navigate(AppRoutes.HOME_SCREEN) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToAlumnos = {
+                    navController.navigate(AppRoutes.MIS_ALUMNOS_SCREEN) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToEjercicios = {
+                    navController.navigate(AppRoutes.LISTA_EJERCICIOS_SCREEN) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
         composable(AppRoutes.ADD_EJERCICIO_SCREEN) {
             val viewModel: EjerciciosViewModel = viewModel()
             AddEjercicioScreen(
+                entrenadorId = user.id,
                 onNavigateBack = { navController.popBackStack() },
-                onSave = { nombre, descripcion, musculo, urlVideo ->
-                    viewModel.addEjercicio(nombre, descripcion, musculo, urlVideo)
+                onSave = { nombre, descripcion, musculo, urlVideo, urlGif, urlImagen, fuenteVideo, esDeAPI ->
+                    viewModel.addEjercicio(
+                        nombre = nombre,
+                        descripcion = descripcion,
+                        musculo = musculo,
+                        urlVideo = urlVideo,
+                        urlGif = urlGif,
+                        urlImagen = urlImagen,
+                        fuenteVideo = fuenteVideo,
+                        esDeAPI = esDeAPI
+                    )
                     navController.popBackStack()
                 }
             )
@@ -272,13 +339,18 @@ fun AppNavHost(authViewModel: AuthViewModel, user: Usuario) {
                 } else {
                     AddEjercicioScreen(
                         ejercicioInicial = ejercicio,
+                        entrenadorId = user.id,
                         onNavigateBack = { navController.popBackStack() },
-                        onSave = { nombre, descripcion, musculo, urlVideo ->
+                        onSave = { nombre, descripcion, musculo, urlVideo, urlGif, urlImagen, fuenteVideo, esDeAPI ->
                             val ejercicioActualizado = ejercicio!!.copy(
                                 nombre = nombre,
                                 descripcion = descripcion,
                                 musculoPrincipal = musculo,
-                                urlVideo = urlVideo ?: ""
+                                urlVideo = urlVideo ?: "",
+                                urlGif = urlGif ?: "",
+                                urlImagen = urlImagen ?: "",
+                                fuenteVideo = fuenteVideo,
+                                esDeAPI = esDeAPI
                             )
                             viewModel.updateEjercicio(ejercicioActualizado)
                             navController.popBackStack()

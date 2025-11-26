@@ -21,9 +21,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.proyecto20.model.DiaEntrenamiento
 import com.example.proyecto20.model.Ejercicio
 import com.example.proyecto20.model.EjercicioRutina
@@ -54,75 +56,128 @@ fun PlanificacionRutinaScreen(
     var mostrarDialogoHora by remember { mutableStateOf(false) }
 
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(alumno?.nombre ?: "Planificando Rutina")
-                        if (alumno?.tipo == TipoAlumno.PRESENCIAL && !horaDelDia.isNullOrBlank()) {
+    DarkMatterBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text = "Horario: $horaDelDia",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                                text = alumno?.nombre ?: "Planificando Rutina",
+                                color = DarkMatterPalette.PrimaryText
                             )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (alumno?.tipo == TipoAlumno.PRESENCIAL) {
-                    ExtendedFloatingActionButton(
-                        text = { Text(if (horaDelDia.isNullOrBlank()) "Asignar Horario" else "Cambiar Horario") },
-                        icon = { Icon(Icons.Default.Schedule, contentDescription = "Asignar Horario") },
-                        onClick = { mostrarDialogoHora = true }
-                    )
-                }
-
-                ExtendedFloatingActionButton(
-                    text = { Text("Añadir Ejercicio") },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Añadir Ejercicio") },
-                    onClick = { mostrarDialogoAddEjercicio = true }
-                )
-
-                // --- ¡CAMBIO IMPORTANTE! ---
-                // Se elimina el botón flotante de "Registrar Hito" de aquí.
-
-                ExtendedFloatingActionButton(
-                    text = { Text("Guardar Rutina") },
-                    icon = { Icon(Icons.Default.Save, contentDescription = "Guardar Rutina") },
-                    onClick = {
-                        viewModel.guardarRutinaCompleta { success ->
-                            val message = if (success) "Rutina guardada con éxito" else "Error al guardar la rutina"
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            if (success) onNavigateBack()
+                            if (alumno?.tipo == TipoAlumno.PRESENCIAL && !horaDelDia.isNullOrBlank()) {
+                                Text(
+                                    text = "Horario: $horaDelDia",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = DarkMatterPalette.Highlight
+                                )
+                            }
                         }
                     },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                "Volver",
+                                tint = DarkMatterPalette.PrimaryText
+                            )
+                        }
+                    },
+                    colors = DarkMatterTopAppBarColors()
                 )
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = Color(0xFF1E1E1E),
+                    contentColor = Color.White
+                ) {
+                    if (alumno?.tipo == TipoAlumno.PRESENCIAL) {
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    Icons.Default.Schedule,
+                                    contentDescription = "Horario",
+                                    tint = Color(0xFF2196F3)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = if (horaDelDia.isNullOrBlank()) "Horario" else "Cambiar",
+                                    color = Color(0xFF2196F3),
+                                    fontSize = 12.sp
+                                )
+                            },
+                            selected = false,
+                            onClick = { mostrarDialogoHora = true }
+                        )
+                    }
+                    
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Añadir",
+                                tint = Color(0xFF2196F3)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = "Añadir",
+                                color = Color(0xFF2196F3),
+                                fontSize = 12.sp
+                            )
+                        },
+                        selected = false,
+                        onClick = { mostrarDialogoAddEjercicio = true }
+                    )
+                    
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                Icons.Default.Save,
+                                contentDescription = "Guardar",
+                                tint = DarkMatterPalette.Highlight
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = "Guardar",
+                                color = DarkMatterPalette.Highlight,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            viewModel.guardarRutinaCompleta { success ->
+                                val message = if (success) "Rutina guardada con éxito" else "Error al guardar la rutina"
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                if (success) onNavigateBack()
+                            }
+                        }
+                    )
+                }
             }
-        }
-    ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+        ) { padding ->
+            Column(modifier = Modifier.padding(padding)) {
             PrimaryTabRow(
-                selectedTabIndex = diasSemana.indexOf(diaSeleccionado)
+                selectedTabIndex = diasSemana.indexOf(diaSeleccionado),
+                containerColor = Color.Transparent,
+                contentColor = DarkMatterPalette.PrimaryText
             ) {
                 diasSemana.forEach { dia ->
+                    val isSelected = dia == diaSeleccionado
                     Tab(
-                        selected = dia == diaSeleccionado,
+                        selected = isSelected,
                         onClick = { viewModel.seleccionarDia(dia) },
-                        text = { Text(dia.take(1)) }
+                        text = { 
+                            Text(
+                                dia.take(1),
+                                color = if (isSelected) DarkMatterPalette.Highlight else DarkMatterPalette.PrimaryText
+                            )
+                        }
                     )
                 }
             }
@@ -144,7 +199,7 @@ fun PlanificacionRutinaScreen(
             )
         }
 
-        if (mostrarDialogoAddEjercicio) {
+            if (mostrarDialogoAddEjercicio) {
             DialogoSeleccionarEjercicio(
                 ejercicios = catalogoEjercicios,
                 onDismiss = { mostrarDialogoAddEjercicio = false },
@@ -166,7 +221,7 @@ fun PlanificacionRutinaScreen(
             )
         }
 
-        if (mostrarDialogoHora) {
+            if (mostrarDialogoHora) {
             DialogoAsignarHora(
                 dia = diaSeleccionado,
                 valorInicial = horaDelDia ?: "",
@@ -183,7 +238,7 @@ fun PlanificacionRutinaScreen(
 
         // --- ¡CAMBIO IMPORTANTE! ---
         // El diálogo ahora es controlado por el estado del ViewModel.
-        if (showHitoDialog) {
+            if (showHitoDialog) {
             RegistrarHitoDialog(
                 onDismiss = { viewModel.showDialog.value = false },
                 onConfirm = { comentario ->
@@ -193,6 +248,7 @@ fun PlanificacionRutinaScreen(
                     }
                 }
             )
+        }
         }
     }
 }
@@ -216,7 +272,8 @@ fun ContenidoDia(
             Text(
                 text = "Sin entrenamiento asignado para este día.\nPulsa (+) para añadir ejercicios.",
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = DarkMatterPalette.PrimaryText
             )
         }
     } else {
@@ -236,9 +293,13 @@ fun ContenidoDia(
                     Text(
                         text = "Ejercicios de hoy",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = DarkMatterPalette.PrimaryText
                     )
-                    Button(onClick = onRegistrarHito) {
+                    Button(
+                        onClick = onRegistrarHito,
+                        colors = DarkMatterButtonColors()
+                    ) {
                         Icon(Icons.Default.WorkspacePremium, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                         Text("Registrar Hito")
@@ -253,7 +314,7 @@ fun ContenidoDia(
                     onClick = { onEditEjercicio(ejercicioRutina) }
                 )
             }
-            item { Spacer(modifier = Modifier.height(150.dp)) }
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 }
@@ -313,17 +374,22 @@ fun EjercicioRutinaCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(ejercicio.nombre, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text(
+                    ejercicio.nombre,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                    color = Color(0xFF2196F3)
+                )
                 IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Delete, "Eliminar", tint = MaterialTheme.colorScheme.error)
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                Text("Series: ${ejercicio.series}", style = MaterialTheme.typography.bodyMedium)
-                Text("Reps: ${ejercicio.repeticiones}", style = MaterialTheme.typography.bodyMedium)
-                ejercicio.peso?.let { Text("Peso: ${it}kg", style = MaterialTheme.typography.bodyMedium) }
-                ejercicio.rir?.let { Text("RIR: $it", style = MaterialTheme.typography.bodyMedium) }
+                Text("Series: ${ejercicio.series}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF2196F3))
+                Text("Reps: ${ejercicio.repeticiones}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF2196F3))
+                ejercicio.peso?.let { Text("Peso: ${it}kg", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF2196F3)) }
+                ejercicio.rir?.let { Text("RIR: $it", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF2196F3)) }
             }
         }
     }

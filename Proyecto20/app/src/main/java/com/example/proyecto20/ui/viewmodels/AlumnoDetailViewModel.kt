@@ -3,6 +3,7 @@
 package com.example.proyecto20.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.proyecto20.data.FirebaseRepository
 import com.example.proyecto20.model.Ejercicio
@@ -14,6 +15,16 @@ class AlumnoDetailViewModel : ViewModel() {
 
     private val _alumno = MutableStateFlow<Usuario?>(null)
     val alumno = _alumno.asStateFlow()
+    
+    class Factory : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(AlumnoDetailViewModel::class.java)) {
+                @Suppress("UNCHECKED_CAST")
+                return AlumnoDetailViewModel() as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()

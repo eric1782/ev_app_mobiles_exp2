@@ -63,12 +63,24 @@ dependencies {
     // Firebase
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
     implementation(libs.kotlinx.coroutines.play.services)
+    
+    // Retrofit (HTTP Client)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
     
     // Vico (Gráficos)
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
     implementation(libs.vico.core)
+    
+    // Coil (Carga de imágenes con soporte AVIF y GIF)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
     
     // Testing
     testImplementation(libs.junit)

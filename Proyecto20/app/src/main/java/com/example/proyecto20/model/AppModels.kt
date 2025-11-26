@@ -22,7 +22,10 @@ enum class TipoAlumno {
 data class Usuario(
     @get:Exclude var id: String = "",
     val nombre: String = "",
+    val apellido: String = "",
     val email: String = "",
+    val telefono: String? = null,
+    val whatsapp: String? = null,
     val rol: RolUsuario = RolUsuario.ALUMNO,
     val idEntrenador: String? = null,
     val peso: Double? = null,
@@ -37,7 +40,11 @@ data class Ejercicio(
     val nombre: String = "",
     val descripcion: String = "",
     val musculoPrincipal: String = "",
-    val urlVideo: String = ""
+    val urlVideo: String = "",
+    val urlGif: String = "",              // URL del GIF (puede ser de API o subido)
+    val urlImagen: String = "",           // URL de imagen (puede ser de API o subida)
+    val fuenteVideo: String = "",         // "api", "upload", "manual" - para saber el origen
+    val esDeAPI: Boolean = false          // Si fue importado completamente de la API
 )
 
 
@@ -85,5 +92,33 @@ data class RegistroProgreso(
     val peso: Double? = null,
     val rir: Int? = null,
     val comentario: String? = null
+)
+
+// --- MODELOS PARA TEMPORIZADORES (SESSION-ONLY, NO SE GUARDAN EN FIRESTORE) ---
+
+enum class TimerState {
+    IDLE,           // Creado pero no iniciado
+    RUNNING,        // En ejecución (trabajo o descanso)
+    PAUSED,         // Pausado
+    COMPLETED       // Completado todas las rondas
+}
+
+enum class TimerPhase {
+    PREPARE,        // Fase de preparación (5 segundos antes de empezar)
+    WORK,           // Fase de trabajo
+    REST            // Fase de descanso
+}
+
+data class Timer(
+    val id: String,                    // ID único del temporizador
+    val nombre: String,                // Nombre del temporizador (ej: "Tabata - Sara")
+    val tiempoTrabajoSegundos: Int,    // Duración del trabajo en segundos
+    val tiempoDescansoSegundos: Int,   // Duración del descanso en segundos
+    val repeticiones: Int,             // Número de rondas
+    val repeticionesCompletadas: Int = 0,  // Rondas completadas
+    val estado: TimerState = TimerState.IDLE,
+    val faseActual: TimerPhase = TimerPhase.WORK,
+    val tiempoRestanteSegundos: Int = 0,  // Tiempo restante del intervalo actual
+    val tiempoInicioPausa: Long? = null   // Timestamp cuando se pausó (para calcular el tiempo transcurrido)
 )
 

@@ -19,7 +19,8 @@ data class CitaCalendario(
     val alumnoId: String,
     val nombreAlumno: String,
     val detalle: String, // "10:00 - 11:00" o "Online"
-    val tipo: TipoAlumno
+    val tipo: TipoAlumno,
+    val numEjercicios: Int = 0 // Número de ejercicios para ese día
 )
 
 class CalendarioViewModel(private val entrenadorId: String) : ViewModel() {
@@ -67,6 +68,10 @@ class CalendarioViewModel(private val entrenadorId: String) : ViewModel() {
         val citas = mutableListOf<CitaCalendario>()
 
         alumnos.forEach { alumno ->
+            // Busca la rutina del día para obtener el número de ejercicios
+            val rutinaDelDia = alumno.rutina.find { it.dia.uppercase() == diaDeLaSemana }
+            val numEjercicios = rutinaDelDia?.ejercicios?.size ?: 0
+            
             when (alumno.tipo) {
                 TipoAlumno.PRESENCIAL -> {
                     // Busca si tiene un horario presencial para ese día de la semana
@@ -77,7 +82,8 @@ class CalendarioViewModel(private val entrenadorId: String) : ViewModel() {
                                 alumnoId = alumno.id,
                                 nombreAlumno = alumno.nombre,
                                 detalle = horario.hora,
-                                tipo = TipoAlumno.PRESENCIAL
+                                tipo = TipoAlumno.PRESENCIAL,
+                                numEjercicios = numEjercicios
                             )
                         )
                     }
@@ -91,7 +97,8 @@ class CalendarioViewModel(private val entrenadorId: String) : ViewModel() {
                                 alumnoId = alumno.id,
                                 nombreAlumno = alumno.nombre,
                                 detalle = "Online",
-                                tipo = TipoAlumno.ONLINE
+                                tipo = TipoAlumno.ONLINE,
+                                numEjercicios = numEjercicios
                             )
                         )
                     }

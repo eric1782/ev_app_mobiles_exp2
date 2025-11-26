@@ -6,7 +6,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.firestore.ktx.snapshots
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -67,24 +66,31 @@ object FirebaseRepository {
     /**
      * Obtiene un Flow de un usuario para observar sus cambios en tiempo real.
      */
-    fun getUsuarioFlow(userId: String): Flow<Usuario?> {
-        return db.collection("usuarios").document(userId)
-            .snapshots() // Esta llamada es correcta aquí porque el Repository tiene los imports necesarios
-            .map { snapshot ->
-                // Convierte el documento de Firestore en un objeto Usuario
-                snapshot.toObject(Usuario::class.java)?.copy(id = snapshot.id)
+    fun getUsuarioFlow(userId: String): Flow<Usuario?> = callbackFlow {
+        val listener = db.collection("usuarios").document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val usuario = snapshot?.toObject(Usuario::class.java)?.copy(id = snapshot.id)
+                trySend(usuario)
             }
+        awaitClose { listener.remove() }
     }
     // --- ¡¡FIN DE LA FUNCIÓN AÑADIDA!! ---
 
     suspend fun crearUsuarioEnAuthYFirestore(
         email: String,
         nombre: String,
+        apellido: String = "",
         rol: RolUsuario,
         entrenadorId: String,
         password: String,
-        peso: Double?,
-        estatura: Double?,
+        telefono: String? = null,
+        whatsapp: String? = null,
+        peso: Double? = null,
+        estatura: Double? = null,
         tipo: TipoAlumno
     ): Usuario? {
         val authResult = auth.createUserWithEmailAndPassword(email, password).await()
@@ -92,7 +98,10 @@ object FirebaseRepository {
         val nuevoUsuario = Usuario(
             id = firebaseUser.uid,
             nombre = nombre,
+            apellido = apellido,
             email = email,
+            telefono = telefono,
+            whatsapp = whatsapp,
             rol = rol,
             idEntrenador = entrenadorId,
             peso = peso,
@@ -110,6 +119,12 @@ object FirebaseRepository {
         } catch (e: Exception) {
             null
         }
+    }
+
+    suspend fun actualizarDatosUsuario(userId: String, datos: Map<String, Any?>) {
+        db.collection("usuarios").document(userId)
+            .set(datos, SetOptions.merge())
+            .await()
     }
 
     // --- FUNCIONES DE ALUMNOS ---
@@ -133,14 +148,19 @@ object FirebaseRepository {
     }
 
     // --- FUNCIONES DE EJERCICIOS ---
-    fun getCatalogoEjerciciosFlow(): Flow<List<Ejercicio>> {
-        return db.collection("ejercicios")
-            .snapshots()
-            .map { snapshot ->
-                snapshot.documents.mapNotNull { document ->
-                    document.toObject(Ejercicio::class.java)?.copy(id = document.id)
+    fun getCatalogoEjerciciosFlow(): Flow<List<Ejercicio>> = callbackFlow {
+        val listener = db.collection("ejercicios")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
                 }
+                val ejercicios = snapshot?.documents?.mapNotNull { document ->
+                    document.toObject(Ejercicio::class.java)?.copy(id = document.id)
+                } ?: emptyList()
+                trySend(ejercicios)
             }
+        awaitClose { listener.remove() }
     }
 
     suspend fun getEjercicioById(ejercicioId: String): Ejercicio? {
@@ -161,12 +181,17 @@ object FirebaseRepository {
     }
 
     // --- FUNCIONES DE RUTINA ---
-    fun getRutinaDeAlumnoFlow(alumnoId: String): Flow<List<DiaEntrenamiento>> {
-        return db.collection("usuarios").document(alumnoId)
-            .snapshots()
-            .map { documentSnapshot ->
-                documentSnapshot.toObject(Usuario::class.java)?.rutina ?: emptyList()
+    fun getRutinaDeAlumnoFlow(alumnoId: String): Flow<List<DiaEntrenamiento>> = callbackFlow {
+        val listener = db.collection("usuarios").document(alumnoId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val rutina = snapshot?.toObject(Usuario::class.java)?.rutina ?: emptyList()
+                trySend(rutina)
             }
+        awaitClose { listener.remove() }
     }
 
     suspend fun guardarRutinaDeAlumno(alumnoId: String, nuevaRutina: List<DiaEntrenamiento>) {

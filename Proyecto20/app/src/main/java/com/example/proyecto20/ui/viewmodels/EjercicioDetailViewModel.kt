@@ -16,7 +16,15 @@ class EjercicioDetailViewModel(ejercicioId: String) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            _ejercicio.value = FirebaseRepository.getEjercicioById(ejercicioId)
+            val ejercicioObtenido = FirebaseRepository.getEjercicioById(ejercicioId)
+            // Debug: Verificar que los campos se están recuperando
+            ejercicioObtenido?.let {
+                android.util.Log.d("EjercicioDetailViewModel", "Ejercicio obtenido: ${it.nombre}")
+                android.util.Log.d("EjercicioDetailViewModel", "urlGif: ${it.urlGif}")
+                android.util.Log.d("EjercicioDetailViewModel", "urlImagen: ${it.urlImagen}")
+                android.util.Log.d("EjercicioDetailViewModel", "urlVideo: ${it.urlVideo}")
+            }
+            _ejercicio.value = ejercicioObtenido
         }
     }
 
